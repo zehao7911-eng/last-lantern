@@ -1,0 +1,13 @@
+export const passengers=[{name:'MILO',role:'The lantern keeper',line:'My moths know the way.',end:'A thousand tiny porch lights.',color:0xf5be57,kind:0},{name:'NELL',role:'The midnight baker',line:'Careful. The cake is asleep.',end:'One cake. Zero disasters.',color:0xf58c89,kind:1},{name:'THE JUNE TRIO',role:'One very late band',line:'Next stop: our first encore.',end:'You brought the whole show.',color:0x85dbc8,kind:2}];
+export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+export function profile(v={}){return {game:'last-lantern',v:1,unlocked:clamp(Math.floor(Number(v.unlocked)||1),1,6),best:Array.from({length:6},(_,i)=>clamp(Number(v.best?.[i])||0,0,3)),gold:!!v.gold,confetti:!!v.confetti,sound:v.sound!==false};}
+export class Trip{
+ constructor(level=0){this.level=clamp(level,0,5);this.person=passengers[level%3];this.z=0;this.x=0;this.speed=0;this.health=5;this.phase='drive';this.stage='pickup';this.target=90;this.damage=0;this.elapsed=0;this.cool=0;this.still=0;this.score=0;this.eventDone=false;this.cake=0;this.hazards=Array.from({length:9},(_,i)=>({z:125+i*20,x:Math.sin(i*3.7+level)*2.7,hit:false,type:i%3}));}
+ step(dt,input){if(this.phase!=='drive')return [];let events=[];dt=Math.min(dt,.05);this.elapsed+=dt;this.cool=Math.max(0,this.cool-dt);let requested=input.down?12+this.level*.7:0;this.speed+=(requested-this.speed)*Math.min(1,dt*(input.down?1.5:4.5));this.x+=(clamp(input.x,-3.5,3.5)-this.x)*Math.min(1,dt*3);this.z+=this.speed*dt;
+ if(this.z>=this.target+10){this.z=this.target+8;this.speed=0;events.push('miss');}
+ if(Math.abs(this.z-this.target)<11&&this.speed<2.3){this.still+=dt;if(this.still>.55){this.phase='scene';events.push(this.stage);}}else this.still=0;
+ if(this.stage==='drop'){if(this.person.kind===1){this.cake=Math.max(0,this.cake-dt*.5);if(this.speed>8&&Math.abs(input.x-this.x)>2)this.cake+=dt*3;if(this.cake>1.5&&this.cool===0){this.cake=0;this.damage++;this.health=Math.max(1,this.health-1);this.cool=2;events.push('bump')}}if(this.z>200&&!this.eventDone){this.eventDone=true;events.push('event');if(this.person.kind===0){let h=this.hazards.find(h=>h.z>this.z&&!h.hit);if(h){h.hit=true;events.push('moth')}}if(this.person.kind===2){this.health=Math.min(5,this.health+1);events.push('song')}}for(let h of this.hazards){if(!h.hit&&Math.abs(h.z-this.z)<1.2&&Math.abs(h.x-this.x)<.9){h.hit=true;this.damage++;this.health--;this.cool=1;this.speed*=.45;events.push('bump');if(this.health<=0){this.phase='failed';events.push('failed');break}}}}
+ return events;}
+ finishScene(){if(this.phase!=='scene')return;if(this.stage==='pickup'){this.stage='drop';this.phase='drive';this.target=330;this.z=90;this.still=0;}else{this.phase='won';this.score=this.damage===0?3:this.damage<3?2:1;}}
+}
+
